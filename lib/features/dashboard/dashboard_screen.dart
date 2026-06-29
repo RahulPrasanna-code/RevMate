@@ -2,13 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/providers.dart';
 import '../../data/database/database.dart';
+import '../../data/services/notification_service.dart';
+import '../../data/services/claude_chat_service.dart';
 import 'package:intl/intl.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  String? _nudge;
+  bool _loadingNudge = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNudge();
+  }
+
+  Future<void> _fetchNudge() async {
+    setState(() => _loadingNudge = true);
+    final nudge = await ref.read(chatServiceProvider).getNudge();
+    if (mounted) {
+      setState(() {
+        _nudge = nudge;
+        _loadingNudge = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final bikesAsync = ref.watch(watchAllBikesProvider);
 
     return bikesAsync.when(
@@ -32,6 +59,8 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_nudge != null && _nudge!.isNotEmpty) _nudgeBanner(context),
+              const SizedBox(height: 8),
               Text(
                 'Hello, ${bike.name}',
                 style: Theme.of(context).textTheme.titleLarge,
@@ -45,6 +74,7 @@ class DashboardScreen extends ConsumerWidget {
                   _nextServiceCard(context, serviceLogsAsync),
                   _monthlySpendCard(context, fuelLogsAsync, expenseLogsAsync),
                   _avgFuelEfficiencyCard(context, fuelLogsAsync),
+                  _tyrePressureCard(context, ref),
                 ],
               ),
             ],
@@ -53,6 +83,20 @@ class DashboardScreen extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, st) => Center(child: Text('Error: $e')),
+    );
+  }
+
+  Widget _nudgeBanner(BuildContext context) {
+    return MaterialBanner(
+      content: Text(_nudge!),
+      leading: const Icon(Icons.tips_and_updates),
+      actions: [
+        TextButton(
+          onPressed: () => setState(() => _nudge = null),
+          child: const Text('DISMISS'),
+        ),
+      ],
+      backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
     );
   }
 
@@ -261,6 +305,48 @@ class DashboardScreen extends ConsumerWidget {
             ),
             error: (e, st) =>
                 Text('Error', style: Theme.of(context).textTheme.bodyMedium),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tyrePressureCard(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      width: 320,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tyre Pressure',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Check every 15 days',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  FilledButton.tonal(
+                    onPressed: () async {
+                      final svc = ref.read(notificationServiceProvider);
+                      await svc.markTyreChecked();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Tyre pressure check recorded!')),
+                        );
+                      }
+                    },
+                    child: const Text('Mark Done'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

@@ -9,6 +9,9 @@ import 'features/fuel_log/fuel_log_screen.dart';
 import 'features/service_log/service_log_screen.dart';
 import 'features/expenses/expenses_screen.dart';
 import 'features/bike_profile/bike_profile_screen.dart';
+import 'features/rides/rides_screen.dart';
+import 'features/chat/chat_screen.dart';
+import 'data/services/notification_service.dart';
 
 Future<void> main() async {
   await runZonedGuarded<Future<void>>(
@@ -25,7 +28,12 @@ Future<void> main() async {
         }
       };
 
-      runApp(const ProviderScope(child: MainApp()));
+      final container = ProviderContainer();
+      final notificationService = container.read(notificationServiceProvider);
+      await notificationService.init();
+      await notificationService.checkAndNotify();
+
+      runApp(UncontrolledProviderScope(container: container, child: const MainApp()));
     },
     (error, stack) {
       print('Uncaught zone error: $error');
@@ -83,10 +91,22 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Expenses',
           ),
           NavigationDestination(
+            icon: Icon(Icons.route),
+            label: 'Rides',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.two_wheeler),
             label: 'Profile',
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const ChatScreen()),
+          );
+        },
+        child: const Icon(Icons.chat_bubble),
       ),
     );
   }
@@ -102,34 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
       case 3:
         return const ExpensesScreen();
       case 4:
+        return const RidesScreen();
+      case 5:
         return const BikeProfileScreen();
       default:
         return const Center(child: Text('Unknown'));
     }
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-
-  const PlaceholderScreen(this.title, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 16),
-          Text(
-            'Phase 3: Coming Soon',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

@@ -39,6 +39,22 @@ class VehicleLookupService {
     String plate,
     Map<String, String> headers,
   ) async {
+    // Phase 2 Mock Fallback
+    if (plate == 'TN60AQ9225') {
+      return {
+        'license_plate': 'TN60AQ9225',
+        'brand_name': 'Royal Enfield',
+        'brand_model': 'Classic 350',
+        'year': '2022',
+        'fuel_type': 'Petrol',
+        'cubic_capacity': '349',
+        'color': 'Halcyon Black',
+        'insurance_expiry': '2025-12-31',
+        'pucc_upto': '2024-06-30',
+        'owner_name': 'Rahul Prasanna'
+      };
+    }
+
     final uri = Uri.parse(baseUrl);
     final body = jsonEncode({'vehicle_number': plate});
     print('VehicleLookupService: POST $uri body=$body');
