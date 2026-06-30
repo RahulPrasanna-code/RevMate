@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/providers.dart';
 import '../../data/database/database.dart';
 import '../../data/services/notification_service.dart';
-import '../../data/services/claude_chat_service.dart';
+import '../../data/services/ai_manager_service.dart';
 import 'package:intl/intl.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -25,7 +25,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _fetchNudge() async {
     setState(() => _loadingNudge = true);
-    final nudge = await ref.read(chatServiceProvider).getNudge();
+    final nudge = await ref.read(aiManagerProvider).getNudge();
     if (mounted) {
       setState(() {
         _nudge = nudge;

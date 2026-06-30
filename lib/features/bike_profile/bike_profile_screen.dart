@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/providers.dart';
 import '../../data/database/database.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../data/services/ai_manager_service.dart';
 import 'vehicle_lookup.dart';
-// intl not used here
 
 class BikeProfileScreen extends ConsumerWidget {
   const BikeProfileScreen({super.key});
@@ -105,7 +105,7 @@ class BikeProfileScreen extends ConsumerWidget {
       isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: ApiKeySettingsSheet(),
+        child: const ApiKeySettingsSheet(),
       ),
     );
   }
@@ -143,6 +143,7 @@ class ApiKeySettingsSheet extends ConsumerStatefulWidget {
 
 class _ApiKeySettingsSheetState extends ConsumerState<ApiKeySettingsSheet> {
   final _anthropic = TextEditingController();
+  final _gemini = TextEditingController();
   final _rapid = TextEditingController();
   final _storage = const FlutterSecureStorage();
 
@@ -154,16 +155,19 @@ class _ApiKeySettingsSheetState extends ConsumerState<ApiKeySettingsSheet> {
 
   Future<void> _load() async {
     final a = await _storage.read(key: 'anthropic_key');
+    final g = await _storage.read(key: 'gemini_api_key');
     final r = await _storage.read(key: 'rapidapi_key');
     if (mounted)
       setState(() {
         _anthropic.text = a ?? '';
+        _gemini.text = g ?? '';
         _rapid.text = r ?? '';
       });
   }
 
   Future<void> _save() async {
     await _storage.write(key: 'anthropic_key', value: _anthropic.text.trim());
+    await _storage.write(key: 'gemini_api_key', value: _gemini.text.trim());
     await _storage.write(key: 'rapidapi_key', value: _rapid.text.trim());
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -175,17 +179,47 @@ class _ApiKeySettingsSheetState extends ConsumerState<ApiKeySettingsSheet> {
   @override
   void dispose() {
     _anthropic.dispose();
+    _gemini.dispose();
     _rapid.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentEngine = ref.watch(aiEngineProvider);
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('AI Engine', style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<AIEngine>(
+                  title: const Text('Gemini (Free)'),
+                  value: AIEngine.gemini,
+                  groupValue: currentEngine,
+                  onChanged: (v) => ref.read(aiManagerProvider).setEngine(v!),
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<AIEngine>(
+                  title: const Text('Claude'),
+                  value: AIEngine.claude,
+                  groupValue: currentEngine,
+                  onChanged: (v) => ref.read(aiManagerProvider).setEngine(v!),
+                ),
+              ),
+            ],
+          ),
+          const Divider(),
+          TextFormField(
+            controller: _gemini,
+            decoration: const InputDecoration(labelText: 'Gemini API Key'),
+          ),
           TextFormField(
             controller: _anthropic,
             decoration: const InputDecoration(labelText: 'Anthropic API Key'),

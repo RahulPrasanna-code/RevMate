@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/services/claude_chat_service.dart';
+import '../../data/services/ai_manager_service.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -21,7 +21,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _controller.clear();
     setState(() => _isLoading = true);
 
-    await ref.read(chatServiceProvider).sendMessage(text);
+    await ref.read(aiManagerProvider).sendMessage(text);
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -43,8 +43,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final chatService = ref.watch(chatServiceProvider);
-    final messages = chatService.history;
+    final aiManager = ref.watch(aiManagerProvider);
+    final messages = aiManager.history;
 
     return Scaffold(
       appBar: AppBar(title: const Text('RevMate AI Chat')),

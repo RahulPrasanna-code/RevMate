@@ -12,6 +12,7 @@ import 'features/bike_profile/bike_profile_screen.dart';
 import 'features/rides/rides_screen.dart';
 import 'features/chat/chat_screen.dart';
 import 'data/services/notification_service.dart';
+import 'data/services/ai_manager_service.dart';
 
 Future<void> main() async {
   await runZonedGuarded<Future<void>>(
@@ -32,6 +33,9 @@ Future<void> main() async {
       final notificationService = container.read(notificationServiceProvider);
       await notificationService.init();
       await notificationService.checkAndNotify();
+      
+      final aiManager = container.read(aiManagerProvider);
+      await aiManager.init();
 
       runApp(UncontrolledProviderScope(container: container, child: const MainApp()));
     },
