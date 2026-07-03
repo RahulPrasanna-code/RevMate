@@ -13,6 +13,7 @@ import 'features/rides/rides_screen.dart';
 import 'features/chat/chat_screen.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/ai_manager_service.dart';
+import 'features/himalayan/himalayan_dash_screen.dart';
 
 Future<void> main() async {
   await runZonedGuarded<Future<void>>(
@@ -102,6 +103,10 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.two_wheeler),
             label: 'Profile',
           ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_input_component),
+            label: 'Himalayan',
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -129,6 +134,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return const RidesScreen();
       case 5:
         return const BikeProfileScreen();
+      case 6:
+        return const HimalayanDashScreen();
       default:
         return const Center(child: Text('Unknown'));
     }
