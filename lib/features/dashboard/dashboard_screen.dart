@@ -36,6 +36,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final bikesAsync = ref.watch(watchAllBikesProvider);
 
     return bikesAsync.when(
@@ -54,30 +55,51 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           watchExpenseLogsByBikeProvider(bikeId),
         );
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_nudge != null && _nudge!.isNotEmpty) _nudgeBanner(context),
-              const SizedBox(height: 8),
-              Text(
-                'Hello, ${bike.name}',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _odometerCard(context, bike),
-                  _nextServiceCard(context, serviceLogsAsync),
-                  _monthlySpendCard(context, fuelLogsAsync, expenseLogsAsync),
-                  _avgFuelEfficiencyCard(context, fuelLogsAsync),
-                  _tyrePressureCard(context, ref),
+        return RefreshIndicator(
+          onRefresh: _fetchNudge,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_nudge != null && _nudge!.isNotEmpty) ...[
+                  _nudgeBanner(context),
+                  const SizedBox(height: 24),
                 ],
-              ),
-            ],
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      child: Icon(Icons.two_wheeler, color: theme.colorScheme.primary),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hello, Rider',
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                        Text(
+                          bike.name,
+                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                Text('BIKE STATUS', style: theme.textTheme.labelLarge?.copyWith(letterSpacing: 1.2)),
+                const SizedBox(height: 16),
+                _buildStatusGrid(context, bike, serviceLogsAsync, fuelLogsAsync, expenseLogsAsync),
+                const SizedBox(height: 32),
+                Text('MAINTENANCE', style: theme.textTheme.labelLarge?.copyWith(letterSpacing: 1.2)),
+                const SizedBox(height: 16),
+                _tyrePressureCard(context, ref),
+              ],
+            ),
           ),
         );
       },
@@ -86,122 +108,132 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _nudgeBanner(BuildContext context) {
-    return MaterialBanner(
-      content: Text(_nudge!),
-      leading: const Icon(Icons.tips_and_updates),
-      actions: [
-        TextButton(
-          onPressed: () => setState(() => _nudge = null),
-          child: const Text('DISMISS'),
-        ),
+  Widget _buildStatusGrid(
+    BuildContext context, 
+    BikeData bike,
+    AsyncValue<List<ServiceLogData>> serviceLogs,
+    AsyncValue<List<FuelLogData>> fuelLogs,
+    AsyncValue<List<ExpenseLogData>> expenseLogs,
+  ) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      childAspectRatio: 1.1,
+      children: [
+        _statCard(context, 'Odometer', '${bike.currentOdometer}', 'km', Icons.speed, Colors.blue),
+        _nextServiceCard(context, serviceLogs),
+        _monthlySpendCard(context, fuelLogs, expenseLogs),
+        _avgFuelEfficiencyCard(context, fuelLogs),
       ],
-      backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+    );
+  }
+
+  Widget _statCard(BuildContext context, String label, String value, String unit, IconData icon, Color color) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const Spacer(),
+          Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          Text('$label ($unit)', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        ],
+      ),
+    );
+  }
+
+  Widget _nudgeBanner(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.tips_and_updates, color: theme.colorScheme.primary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              _nudge!,
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+            ),
+          ),
+          IconButton(
+            onPressed: () => setState(() => _nudge = null),
+            icon: const Icon(Icons.close, size: 20),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _emptyState(BuildContext context) => Center(
     child: Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(32.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.two_wheeler,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary,
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.two_wheeler,
+              size: 64,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           Text(
-            'No bike set up yet',
-            style: Theme.of(context).textTheme.titleMedium,
+            'Ready for a ride?',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Please add your bike details in Profile.',
+            'Add your bike details to start tracking maintenance and fuel.',
             textAlign: TextAlign.center,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ],
       ),
     ),
   );
 
-  Widget _odometerCard(BuildContext context, BikeData bike) {
-    return SizedBox(
-      width: 320,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Current Odometer',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${bike.currentOdometer} km',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _nextServiceCard(
     BuildContext context,
     AsyncValue<List<ServiceLogData>> serviceLogsAsync,
   ) {
-    return SizedBox(
-      width: 320,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: serviceLogsAsync.when(
-            data: (logs) {
-              if (logs.isEmpty)
-                return Text(
-                  'No service records',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                );
-              final latest = logs.first;
-              final nextDueDate = latest.nextDueDate;
-              final days = nextDueDate == null
-                  ? null
-                  : nextDueDate.difference(DateTime.now()).inDays;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Next Service',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  if (nextDueDate != null)
-                    Text(
-                      '${days ?? '-'} days (${DateFormat.yMMMd().format(nextDueDate)})',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    )
-                  else
-                    Text(
-                      'No due date set',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                ],
-              );
-            },
-            loading: () => const SizedBox(
-              height: 48,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, st) =>
-                Text('Error', style: Theme.of(context).textTheme.bodyMedium),
-          ),
-        ),
-      ),
+    return serviceLogsAsync.when(
+      data: (logs) {
+        String value = 'N/A';
+        String label = 'Next Service';
+        if (logs.isNotEmpty) {
+          final nextDueDate = logs.first.nextDueDate;
+          if (nextDueDate != null) {
+            final days = nextDueDate.difference(DateTime.now()).inDays;
+            value = '$days';
+            label = 'Days to Service';
+          }
+        }
+        return _statCard(context, label, value, 'days', Icons.build_circle, Colors.orange);
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => _statCard(context, 'Service', 'Error', '', Icons.error, Colors.red),
     );
   }
 
@@ -210,145 +242,92 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     AsyncValue<List<FuelLogData>> fuelLogsAsync,
     AsyncValue<List<ExpenseLogData>> expenseLogsAsync,
   ) {
-    return SizedBox(
-      width: 320,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'This Month Spend',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
-              Builder(
-                builder: (ctx) {
-                  if (fuelLogsAsync.isLoading || expenseLogsAsync.isLoading)
-                    return const CircularProgressIndicator();
-                  final monthStart = DateTime(
-                    DateTime.now().year,
-                    DateTime.now().month,
-                    1,
-                  );
-                  double total = 0;
-                  fuelLogsAsync.whenData((logs) {
-                    total += logs
-                        .where((l) => l.date.isAfter(monthStart))
-                        .fold(0.0, (s, e) => s + (e.costTotal ?? 0));
-                  });
-                  expenseLogsAsync.whenData((logs) {
-                    total += logs
-                        .where((l) => l.date.isAfter(monthStart))
-                        .fold(0.0, (s, e) => s + (e.cost));
-                  });
-                  return Text(
-                    '₹ ${total.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final theme = Theme.of(context);
+    if (fuelLogsAsync.isLoading || expenseLogsAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    double total = 0;
+    fuelLogsAsync.whenData((logs) {
+      total += logs
+          .where((l) => l.date.isAfter(monthStart))
+          .fold(0.0, (s, e) => s + (e.costTotal ?? 0));
+    });
+    expenseLogsAsync.whenData((logs) {
+      total += logs
+          .where((l) => l.date.isAfter(monthStart))
+          .fold(0.0, (s, e) => s + (e.cost));
+    });
+
+    return _statCard(context, 'Month Spend', '₹${total.toInt()}', 'INR', Icons.account_balance_wallet, Colors.green);
   }
 
   Widget _avgFuelEfficiencyCard(
     BuildContext context,
     AsyncValue<List<FuelLogData>> fuelLogsAsync,
   ) {
-    return SizedBox(
-      width: 320,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: fuelLogsAsync.when(
-            data: (logs) {
-              // compute avg km/l over last 5 full tank entries
-              final fulls = logs.where((l) => l.fullTank).toList();
-              if (fulls.length < 2)
-                return Text(
-                  'Not enough data',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                );
-              double totalKm = 0;
-              double totalLiters = 0;
-              for (var i = 0; i < fulls.length - 1 && i < 5; i++) {
-                final cur = fulls[i];
-                final prev = fulls[i + 1];
-                final km = (cur.odometer - prev.odometer).toDouble();
-                totalKm += km;
-                totalLiters += cur.liters;
-              }
-              final avg = totalLiters > 0 ? totalKm / totalLiters : 0.0;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Avg Fuel Efficiency',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${avg.toStringAsFixed(2)} km/l',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ],
-              );
-            },
-            loading: () => const SizedBox(
-              height: 48,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, st) =>
-                Text('Error', style: Theme.of(context).textTheme.bodyMedium),
-          ),
-        ),
-      ),
+    return fuelLogsAsync.when(
+      data: (logs) {
+        final fulls = logs.where((l) => l.fullTank).toList();
+        double avg = 0;
+        if (fulls.length >= 2) {
+          double totalKm = 0;
+          double totalLiters = 0;
+          for (var i = 0; i < fulls.length - 1 && i < 5; i++) {
+            totalKm += (fulls[i].odometer - fulls[i + 1].odometer).toDouble();
+            totalLiters += fulls[i].liters;
+          }
+          avg = totalLiters > 0 ? totalKm / totalLiters : 0.0;
+        }
+        return _statCard(context, 'Efficiency', avg > 0 ? avg.toStringAsFixed(1) : 'N/A', 'km/l', Icons.local_gas_station, Colors.purple);
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => _statCard(context, 'Fuel', 'Error', '', Icons.error, Colors.red),
     );
   }
 
   Widget _tyrePressureCard(BuildContext context, WidgetRef ref) {
-    return SizedBox(
-      width: 320,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Tyre Pressure',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Check every 15 days',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  FilledButton.tonal(
-                    onPressed: () async {
-                      final svc = ref.read(notificationServiceProvider);
-                      await svc.markTyreChecked();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Tyre pressure check recorded!')),
-                        );
-                      }
-                    },
-                    child: const Text('Mark Done'),
-                  ),
-                ],
-              ),
-            ],
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.tire_repair, color: theme.colorScheme.secondary),
           ),
-        ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Tyre Pressure', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('Check every 15 days', style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ),
+          FilledButton.tonal(
+            onPressed: () async {
+              final svc = ref.read(notificationServiceProvider);
+              await svc.markTyreChecked();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Tyre pressure check recorded!')),
+                );
+              }
+            },
+            child: const Text('Mark Done'),
+          ),
+        ],
       ),
     );
   }

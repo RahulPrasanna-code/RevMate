@@ -10,24 +10,9 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
-  final _controller = TextEditingController();
-  final _scrollController = ScrollController();
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
-
-  void _sendMessage() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-
-    _controller.clear();
-    setState(() => _isLoading = true);
-
-    await ref.read(aiManagerProvider).sendMessage(text);
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-      _scrollToBottom();
-    }
-  }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -43,72 +28,183 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final aiManager = ref.watch(aiManagerProvider);
-    final messages = aiManager.history;
+    final history = aiManager.history;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('RevMate AI Chat')),
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('RevMate AI'),
+            Text(
+              'Powered by ${aiManager.currentEngine}',
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: messages.length + (_isLoading ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == messages.length) {
-                  return const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-                final msg = messages[index];
-                final isUser = msg.role == 'user';
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isUser 
-                        ? Theme.of(context).colorScheme.primaryContainer 
-                        : Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                    child: Text(msg.content),
+            child: history.isEmpty
+                ? _buildEmptyChat(theme)
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(20),
+                    itemCount: history.length + (_isLoading ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == history.length) {
+                        return _buildLoadingIndicator(theme);
+                      }
+                      final msg = history[index];
+                      return _buildChatBubble(theme, msg);
+                    },
                   ),
-                );
-              },
+          ),
+          _buildInputArea(theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyChat(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.auto_awesome, size: 64, color: theme.colorScheme.primary.withOpacity(0.3)),
+            const SizedBox(height: 24),
+            Text(
+              'Ask me anything about your bike!',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'I can help with maintenance tips, fuel efficiency analysis, or service reminders.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatBubble(ThemeData theme, ChatMessage msg) {
+    final isUser = msg.role == 'user';
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: isUser ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isUser ? 20 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 20),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
+          msg.content,
+          style: TextStyle(
+            color: isUser ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
+            height: 1.4,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator(ThemeData theme) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputArea(ThemeData theme) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                hintText: 'Message RevMate AI...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              onSubmitted: (_) => _sendMessage(),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Ask RevMate anything...',
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _isLoading ? null : _sendMessage,
-                  icon: const Icon(Icons.send),
-                ),
-              ],
-            ),
+          const SizedBox(width: 12),
+          IconButton.filled(
+            onPressed: _isLoading ? null : _sendMessage,
+            icon: const Icon(Icons.send),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    _controller.clear();
+    setState(() => _isLoading = true);
+    _scrollToBottom();
+
+    try {
+      await ref.read(aiManagerProvider).sendMessage(text);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _scrollToBottom();
+      }
+    }
   }
 }
