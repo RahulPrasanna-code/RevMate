@@ -5,6 +5,13 @@ import 'gemini_chat_service.dart';
 
 enum AIEngine { claude, gemini }
 
+class ChatMessage {
+  final String role;
+  final String content;
+
+  ChatMessage({required this.role, required this.content});
+}
+
 final aiEngineProvider = StateProvider<AIEngine>((ref) => AIEngine.gemini);
 
 final aiManagerProvider = Provider((ref) => AIManagerService(ref));
@@ -21,6 +28,11 @@ class AIManagerService {
       _ref.read(aiEngineProvider.notifier).state = 
           engineStr == 'claude' ? AIEngine.claude : AIEngine.gemini;
     }
+  }
+
+  String get currentEngine {
+    final engine = _ref.read(aiEngineProvider);
+    return engine == AIEngine.claude ? 'Claude' : 'Gemini';
   }
 
   Future<void> setEngine(AIEngine engine) async {
@@ -51,9 +63,7 @@ class AIManagerService {
     if (engine == AIEngine.claude) {
       return _ref.read(chatServiceProvider).history;
     } else {
-      // Mapping Gemini history if needed, but for now they use the same model
-      final geminiHistory = _ref.read(geminiServiceProvider).history;
-      return geminiHistory;
+      return _ref.read(geminiServiceProvider).history;
     }
   }
 }

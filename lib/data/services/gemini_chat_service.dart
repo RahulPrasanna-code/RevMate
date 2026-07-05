@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../database/database.dart';
 import '../providers.dart';
-import 'claude_chat_service.dart';
+import 'ai_manager_service.dart';
 
 final geminiServiceProvider = Provider((ref) => GeminiChatService(ref));
 

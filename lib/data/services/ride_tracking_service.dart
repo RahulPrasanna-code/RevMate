@@ -23,6 +23,8 @@ class RideTrackingState {
     this.distanceKm = 0.0,
   });
 
+  List<LatLng> get path => routePoints;
+
   RideTrackingState copyWith({
     bool? isTracking,
     List<LatLng>? routePoints,

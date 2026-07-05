@@ -4,15 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../database/database.dart';
 import '../providers.dart';
+import 'ai_manager_service.dart';
 
 final chatServiceProvider = Provider((ref) => ClaudeChatService(ref));
-
-class ChatMessage {
-  final String role;
-  final String content;
-  ChatMessage({required this.role, required this.content});
-  Map<String, String> toJson() => {'role': role, 'content': content};
-}
 
 class ClaudeChatService {
   final Ref _ref;
@@ -52,7 +46,7 @@ You have access to web search for accessory and community suggestions.
           'model': 'claude-3-5-sonnet-20240620',
           'max_tokens': 1000,
           'system': systemPrompt,
-          'messages': _history.map((m) => m.toJson()).toList(),
+          'messages': _history.map((m) => {'role': m.role, 'content': m.content}).toList(),
         }),
       );
 
