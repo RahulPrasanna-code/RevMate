@@ -1,4 +1,4 @@
-package com.yourname.revmate.revmate.revmate
+package com.yourname.revmate.revmate
 
 import com.yourname.revmate.revmate.dash.HimalayanDashboardService
 import io.flutter.embedding.android.FlutterActivity
